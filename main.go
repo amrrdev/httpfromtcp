@@ -9,41 +9,53 @@ import (
 	"os"
 )
 
+func getLinesChannel(f io.ReadCloser) <-chan string {
+	channel := make(chan string)
+
+	go func() {
+		defer f.Close()
+		defer close(channel)
+		currentLine := ""
+		for {
+			data := make([]byte, 8)
+			n, err := f.Read(data)
+			if err != nil {
+				if !errors.Is(err, io.EOF) {
+					fmt.Printf("error: %s\n", err.Error())
+				}
+				break
+			}
+
+			data = data[:n]
+			if i := bytes.IndexByte(data, '\n'); i != -1 {
+				currentLine += string(data[:i])
+				data = data[i+1:]
+				channel <- currentLine
+				currentLine = ""
+			}
+
+			currentLine += string(data)
+		}
+
+		if len(currentLine) != 0 {
+			channel <- currentLine
+		}
+	}()
+
+	return channel
+}
+
 const filePath = "messages.txt"
 
 func main() {
-	file, err := os.Open("messages.txt")
+	f, err := os.Open("messages.txt")
 	if err != nil {
 		log.Fatalf("can not open %s: %s\n", filePath, err)
 	}
-	defer file.Close()
 
-	currentLine := ""
-
-	for {
-		data := make([]byte, 8)
-		n, err := file.Read(data)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			fmt.Printf("error: %s\n", err.Error())
-			break
-		}
-
-		data = data[:n]
-		if i := bytes.IndexByte(data, '\n'); i != -1 {
-			currentLine += string(data[:i])
-			data = data[i+1:]
-			fmt.Printf("read: %s\n", currentLine)
-			currentLine = ""
-		}
-
-		currentLine += string(data)
-	}
-
-	if len(currentLine) != 0 {
-		fmt.Printf("read: %s\n", currentLine)
+	channel := getLinesChannel(f)
+	for line := range channel {
+		fmt.Println("read:", line)
 	}
 
 }
