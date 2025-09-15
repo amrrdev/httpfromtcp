@@ -1,14 +1,49 @@
 package request
 
 import (
+	"fmt"
+	"io"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
+type chuckReader struct {
+	data            string
+	numBytesPerRead int
+	pos             int
+}
+
+var cnt = 0
+
+func (cr *chuckReader) Read(p []byte) (n int, err error) {
+
+	if cr.pos >= len(cr.data) {
+		return 0, io.EOF
+	}
+
+	cnt++
+	fmt.Println("cnt: ", cnt)
+
+	endIdx := min(cr.pos+cr.numBytesPerRead, len(cr.data))
+	n = copy(p, cr.data[cr.pos:endIdx])
+	cr.pos += n
+
+	fmt.Println("pos: ", cr.pos)
+	fmt.Println(strings.Repeat("-", 10))
+
+	return n, nil
+}
+
 func TestRequestLineParser(t *testing.T) {
-	r, err := RequestFromReader(strings.NewReader("GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+
+	reader := &chuckReader{
+		data:            "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+		numBytesPerRead: 10,
+	}
+
+	r, err := RequestFromReader(reader)
 	require.NoError(t, err)
 	require.NotNil(t, r)
 	require.Equal(t, "GET", r.RequestLine.HttpMethod)
