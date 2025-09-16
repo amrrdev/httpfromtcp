@@ -56,7 +56,7 @@ outer:
 			return 0, ErrorRequestInErrorState
 
 		case StateInit:
-			rl, n, err := parseRequestLine(data[read:])
+			rl, n, err := ParseRequestLine(data[read:])
 			if err != nil {
 				r.State = StateError
 				return 0, err
@@ -75,7 +75,7 @@ outer:
 	return read, nil
 }
 
-func parseRequestLine(b []byte) (*RequestLine, int, error) {
+func ParseRequestLine(b []byte) (*RequestLine, int, error) {
 	idx := bytes.Index(b, SEPARATOR)
 	if idx == -1 {
 		return nil, 0, nil

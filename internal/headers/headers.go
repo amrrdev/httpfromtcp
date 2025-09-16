@@ -2,7 +2,6 @@ package headers
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 )
 
@@ -12,43 +11,54 @@ func NewHeaders() Headers {
 	return make(Headers)
 }
 
-/*
-Make sure there’s no space between the header field name and the colon.
-Wrong:  Host : amr.com
-Right:   Host: amr.com
+var rn = []byte("\r\n")
 
-Example:
-  Host: amrmubarak.com\r\n
-  Content-Length: 902\r\n
-  \r\n   // end of headers
-*/
-
-// Look for "\r\n\r\n" — that marks the end of the HTTP headers
-const EndOfHeaderSeparator = "\r\n\r\n"
-
-func (h Headers) Parse(data []byte) (n int, done bool, err error) {
-	endOfHeaderIdx := bytes.Index(data, []byte(EndOfHeaderSeparator))
-	if endOfHeaderIdx == -1 {
-		return 0, false, errors.New("incomplete headers") // incomplete end of headers
+func ParseHeader(fields []byte) (string, string, error) {
+	parts := bytes.SplitN(fields, []byte(":"), 2)
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("malformed header")
 	}
 
-	consumedBytes := endOfHeaderIdx + len(EndOfHeaderSeparator)
-	requestHeaders := data[:endOfHeaderIdx]
-	for header := range bytes.SplitSeq(requestHeaders, []byte("\r\n")) {
-		idx := bytes.Index(header, []byte(":"))
+	name := parts[0]
+	value := bytes.TrimSpace(parts[1])
+	if len(bytes.TrimSpace(name)) == 0 {
+		return "", "", fmt.Errorf("empty field name")
+	}
+
+	for _, b := range name {
+		if b == ' ' || b == '\t' || b == '\r' || b == '\n' {
+			return "", "", fmt.Errorf("malformed field name")
+		}
+	}
+
+	return string(name), string(value), nil
+}
+
+func (h Headers) Parse(data []byte) (int, bool, error) {
+	read := 0
+
+	for {
+		idx := bytes.Index(data, rn)
 		if idx == -1 {
-			return 0, false, nil
+			break
 		}
 
-		fieldName := bytes.TrimSpace(header[:idx])
-		if len(fieldName) != len(header[:idx]) {
-			return 0, false, errors.New("invalid header")
+		// EMPTY HEADER
+		if idx == 0 {
+			read += len(rn)
+			break
 		}
-		fieldValue := bytes.TrimSpace(header[idx+1:])
 
-		fmt.Println("fieldName:", string(fieldName))
-		fmt.Println("fieldValue:", string(fieldValue))
-		h[string(fieldName)] = string(fieldValue)
+		name, value, err := ParseHeader(data[:idx])
+		if err != nil {
+			return 0, false, err
+		}
+
+		h[name] = value
+		read += idx + len(rn)
+		data = data[idx+len(rn):]
+
 	}
-	return consumedBytes, true, nil
+
+	return read, true, nil
 }
