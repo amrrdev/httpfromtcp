@@ -3,6 +3,8 @@ package headers
 import (
 	"bytes"
 	"fmt"
+	"regexp"
+	"strings"
 )
 
 type Headers map[string]string
@@ -11,6 +13,7 @@ func NewHeaders() Headers {
 	return make(Headers)
 }
 
+var validHeaderName = regexp.MustCompile(`^[A-Za-z0-9!#$%&'*+\-.\^_` + "`" + `|~]+$`)
 var rn = []byte("\r\n")
 
 func ParseHeader(fields []byte) (string, string, error) {
@@ -31,7 +34,11 @@ func ParseHeader(fields []byte) (string, string, error) {
 		}
 	}
 
-	return string(name), string(value), nil
+	if !validHeaderName.MatchString(string(name)) {
+		return "", "", fmt.Errorf("malformed field name (invalid characters)")
+	}
+
+	return strings.ToLower(string(name)), string(value), nil
 }
 
 func (h Headers) Parse(data []byte) (int, bool, error) {
