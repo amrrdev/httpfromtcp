@@ -15,16 +15,11 @@ type chuckReader struct {
 	pos             int
 }
 
-var cnt = 0
-
 func (cr *chuckReader) Read(p []byte) (n int, err error) {
 
 	if cr.pos >= len(cr.data) {
 		return 0, io.EOF
 	}
-
-	cnt++
-	fmt.Println("cnt: ", cnt)
 
 	endIdx := min(cr.pos+cr.numBytesPerRead, len(cr.data))
 	n = copy(p, cr.data[cr.pos:endIdx])

@@ -1,44 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"net"
+
+	"github.com/amrrdev/httpfromtcp/internal/request"
 )
-
-func getLinesChannel(conn net.Conn) <-chan string {
-	channel := make(chan string)
-
-	go func() {
-		defer conn.Close()
-		defer close(channel)
-		currentLine := ""
-		for {
-			data := make([]byte, 8)
-			n, err := conn.Read(data)
-			if err != nil {
-				break
-			}
-
-			data = data[:n]
-			if i := bytes.IndexByte(data, '\n'); i != -1 {
-				currentLine += string(data[:i])
-				data = data[i+1:]
-				channel <- currentLine
-				currentLine = ""
-			}
-
-			currentLine += string(data)
-		}
-
-		if len(currentLine) != 0 {
-			channel <- currentLine
-		}
-	}()
-
-	return channel
-}
 
 func main() {
 
@@ -58,11 +26,11 @@ func main() {
 			continue
 		}
 
-		channel := getLinesChannel(conn)
-		for line := range channel {
-			fmt.Println("read:", line)
+		req, err := request.RequestFromReader(conn)
+		if err != nil {
+			log.Fatal(err)
 		}
-
+		fmt.Println("req.RequestLine: ", req.RequestLine)
 	}
 
 }
