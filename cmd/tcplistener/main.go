@@ -26,11 +26,16 @@ func main() {
 			continue
 		}
 
-		req, err := request.RequestFromReader(conn)
+		r, err := request.RequestFromReader(conn)
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println("req.RequestLine: ", req.RequestLine)
+
+		fmt.Println("Request Line: ", r.RequestLine)
+		fmt.Println("Request Method: ", r.RequestLine.HttpMethod)
+		fmt.Println("Request Resource Path: ", r.RequestLine.RequestTarget)
+		fmt.Println("Request Version: ", r.RequestLine.HttpVersion)
+
 	}
 
 }
