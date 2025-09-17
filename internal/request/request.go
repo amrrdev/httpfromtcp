@@ -4,14 +4,17 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+
+	"github.com/amrrdev/httpfromtcp/internal/headers"
 )
 
 type ParserState string
 
 const (
-	StateInit  ParserState = "init"
-	StateDone  ParserState = "done"
-	StateError ParserState = "error"
+	StateInit    ParserState = "init"
+	StateHeaders ParserState = "headers"
+	StateDone    ParserState = "done"
+	StateError   ParserState = "error"
 )
 
 type RequestLine struct {
@@ -22,6 +25,7 @@ type RequestLine struct {
 
 type Request struct {
 	RequestLine RequestLine
+	Headers     headers.Headers
 	State       ParserState
 }
 
@@ -34,7 +38,8 @@ var (
 
 func NewRequest() *Request {
 	return &Request{
-		State: StateInit,
+		State:   StateInit,
+		Headers: headers.NewHeaders(),
 	}
 }
 
@@ -67,10 +72,28 @@ outer:
 
 			r.RequestLine = *rl
 			read += n
-			r.State = StateDone
+			r.State = StateHeaders
+		case StateHeaders:
+			bytesRead, done, err := r.Headers.Parse(data[read:])
+			if err != nil {
+				r.State = StateError
+				return 0, err
+			}
+
+			read += bytesRead
+			if done {
+				r.State = StateDone
+			}
+			if bytesRead == 0 {
+				break outer
+			}
+
 		case StateDone:
 			break outer
+		default:
+			panic("something wendt wrong")
 		}
+
 	}
 	return read, nil
 }

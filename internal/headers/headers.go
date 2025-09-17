@@ -47,13 +47,12 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 	for {
 		idx := bytes.Index(data, rn)
 		if idx == -1 {
-			break
+			return read, false, nil
 		}
 
-		// EMPTY HEADER
 		if idx == 0 {
 			read += len(rn)
-			break
+			return read, true, nil
 		}
 
 		name, value, err := ParseHeader(data[:idx])
@@ -69,8 +68,6 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 
 		read += idx + len(rn)
 		data = data[idx+len(rn):]
-
 	}
 
-	return read, true, nil
 }
