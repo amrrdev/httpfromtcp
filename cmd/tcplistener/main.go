@@ -31,11 +31,15 @@ func main() {
 			log.Fatal(err)
 		}
 
-		fmt.Println("Request Line: ", r.RequestLine)
-		fmt.Println("Request Method: ", r.RequestLine.HttpMethod)
-		fmt.Println("Request Resource Path: ", r.RequestLine.RequestTarget)
-		fmt.Println("Request Version: ", r.RequestLine.HttpVersion)
+		fmt.Println("Request Line: ")
+		fmt.Println("- Method: ", r.RequestLine.HttpMethod)
+		fmt.Println("- Resource Path: ", r.RequestLine.RequestTarget)
+		fmt.Println("- Version: ", r.RequestLine.HttpVersion)
 
+		fmt.Println("Headers: ")
+		for key, value := range r.Headers {
+			fmt.Printf("- %s: %s\n", key, value)
+		}
 	}
 
 }
