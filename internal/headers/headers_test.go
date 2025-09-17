@@ -171,7 +171,7 @@ func TestHeaderParserDuplicateHeaders(t *testing.T) {
 	_, done, err := headers.Parse(data)
 	require.NoError(t, err)
 	// Last one wins (typical map behavior)
-	require.Equal(t, "second=value2", headers["set-cookie"]) // Should be lowercase now
+	require.Equal(t, "first=value1, second=value2", headers["set-cookie"]) // Should be lowercase now
 	require.True(t, done)
 }
 

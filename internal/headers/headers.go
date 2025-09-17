@@ -61,7 +61,12 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 			return 0, false, err
 		}
 
-		h[name] = value
+		if existing, exists := h[name]; exists {
+			h[name] = strings.Join([]string{existing, value}, ", ")
+		} else {
+			h[name] = value
+		}
+
 		read += idx + len(rn)
 		data = data[idx+len(rn):]
 
