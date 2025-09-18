@@ -37,10 +37,12 @@ func main() {
 		fmt.Println("- Version: ", r.RequestLine.HttpVersion)
 
 		fmt.Println("Headers: ")
-
 		r.Headers.ForEach(func(key, val string) {
 			fmt.Printf("- %s: %s\n", key, val)
 		})
+
+		fmt.Println("Body: ")
+		fmt.Println(r.Body)
 
 	}
 

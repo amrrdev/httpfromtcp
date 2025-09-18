@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/amrrdev/httpfromtcp/internal/headers"
 )
@@ -27,7 +28,7 @@ type RequestLine struct {
 type Request struct {
 	RequestLine RequestLine
 	Headers     *headers.Headers
-	Body        []byte
+	Body        string
 	State       ParserState
 }
 
@@ -38,10 +39,24 @@ var (
 	SEPARATOR                   = []byte("\r\n")
 )
 
+func GetInt(header *headers.Headers, name string, defaultValue int) int {
+	valueStr, exists := header.Get(name)
+	if !exists {
+		return defaultValue
+	}
+
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		return defaultValue
+	}
+	return value
+}
+
 func NewRequest() *Request {
 	return &Request{
 		State:   StateInit,
 		Headers: headers.NewHeaders(),
+		Body:    "",
 	}
 }
 
@@ -83,13 +98,37 @@ outer:
 			}
 
 			read += bytesRead
-			if done { // TODO: Update the state to Parsing Body
-				r.State = StateDone
+			if done {
+				length := GetInt(r.Headers, "content-length", 0)
+				if length > 0 {
+					r.State = StateBody
+				} else {
+					r.State = StateDone
+				}
 			}
 			if bytesRead == 0 {
 				break outer
 			}
 
+		case StateBody:
+			length := GetInt(r.Headers, "content-length", 0)
+			if length == 0 {
+				r.State = StateDone
+			}
+
+			remaining := min(length-len(r.Body), len(data[read:]))
+			if remaining > 0 {
+				r.Body += string(data[read : read+remaining])
+				read += remaining
+			}
+
+			if len(r.Body) >= length {
+				r.State = StateDone
+			}
+
+			if remaining == 0 {
+				break outer
+			}
 		case StateDone:
 			break outer
 		default:
@@ -130,24 +169,33 @@ func ParseRequestLine(b []byte) (*RequestLine, int, error) {
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
 	request := NewRequest()
-
 	buf := make([]byte, 1024)
 	bufLen := 0
+
 	for !request.Done() {
 		n, err := reader.Read(buf[bufLen:])
-		if err != nil {
+		if err != nil && err != io.EOF {
 			return nil, err
 		}
-
 		bufLen += n
-		readN, err := request.Parse(buf[:bufLen])
-		if err != nil {
-			return nil, err
+
+		readN, parseErr := request.Parse(buf[:bufLen])
+		if parseErr != nil {
+			return nil, parseErr
 		}
 
 		copy(buf, buf[readN:bufLen])
 		bufLen -= readN
 
+		if err == io.EOF && readN == 0 {
+			if request.State == StateBody {
+				expectedLength := GetInt(request.Headers, "content-length", 0)
+				if len(request.Body) < expectedLength {
+					return nil, fmt.Errorf("unexpected EOF: expected body length %d, got %d", expectedLength, len(request.Body))
+				}
+			}
+			break
+		}
 	}
 
 	return request, nil
