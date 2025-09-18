@@ -13,6 +13,7 @@ type ParserState string
 const (
 	StateInit    ParserState = "init"
 	StateHeaders ParserState = "headers"
+	StateBody    ParserState = "body" // bodys bodys bodys
 	StateDone    ParserState = "done"
 	StateError   ParserState = "error"
 )
@@ -25,7 +26,8 @@ type RequestLine struct {
 
 type Request struct {
 	RequestLine RequestLine
-	Headers     headers.Headers
+	Headers     *headers.Headers
+	Body        []byte
 	State       ParserState
 }
 
@@ -81,7 +83,7 @@ outer:
 			}
 
 			read += bytesRead
-			if done {
+			if done { // TODO: Update the state to Parsing Body
 				r.State = StateDone
 			}
 			if bytesRead == 0 {

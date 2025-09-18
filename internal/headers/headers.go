@@ -7,10 +7,25 @@ import (
 	"strings"
 )
 
-type Headers map[string]string
+// type Headers map[string]string
 
-func NewHeaders() Headers {
-	return make(Headers)
+type Headers struct {
+	headers map[string]string
+}
+
+func NewHeaders() *Headers {
+	return &Headers{
+		headers: map[string]string{},
+	}
+}
+
+func (h *Headers) Set(key, value string) {
+	h.headers[strings.ToLower(key)] = value
+}
+
+func (h *Headers) Get(key string) (string, bool) {
+	val, ok := h.headers[strings.ToLower(key)]
+	return val, ok
 }
 
 var validHeaderName = regexp.MustCompile(`^[A-Za-z0-9!#$%&'*+\-.\^_` + "`" + `|~]+$`)
@@ -41,7 +56,7 @@ func ParseHeader(fields []byte) (string, string, error) {
 	return strings.ToLower(string(name)), string(value), nil
 }
 
-func (h Headers) Parse(data []byte) (int, bool, error) {
+func (h *Headers) Parse(data []byte) (int, bool, error) {
 	read := 0
 
 	for {
@@ -60,14 +75,20 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 			return 0, false, err
 		}
 
-		if existing, exists := h[name]; exists {
-			h[name] = strings.Join([]string{existing, value}, ", ")
+		if existing, exists := h.Get(name); exists {
+			h.Set(name, strings.Join([]string{existing, value}, ", "))
 		} else {
-			h[name] = value
+			h.Set(name, value)
 		}
 
 		read += idx + len(rn)
 		data = data[idx+len(rn):]
 	}
 
+}
+
+func (h *Headers) ForEach(cb func(k, v string)) {
+	for key, value := range h.headers {
+		cb(key, value)
+	}
 }
