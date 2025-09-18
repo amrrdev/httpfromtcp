@@ -48,7 +48,7 @@ Request{
 
 **Coming soon:**
 
-- [ ] Request body parsing
+- [x] Request body parsing
 - [ ] HTTP response generation
 - [ ] Chunked transfer encoding
 
